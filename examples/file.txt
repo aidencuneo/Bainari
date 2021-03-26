@@ -1,0 +1,8 @@
+This program prints seventeen. (In decimal form, except I can't write one in a
+bainari program without messing up the code)
+
+Print number
+11011000 11011000 11011000 1101000 101000 0
+
+Print newline
+000 11001100110011011000

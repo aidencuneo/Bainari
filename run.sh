@@ -1,5 +1,5 @@
 #!/bin/bash
 
-gcc src/char.c -o bin/char
+gcc src/bainari.c -o bin/bainari
 if [[ $? != 0 ]]; then exit; fi
-bin/char $@
+bin/bainari $@
