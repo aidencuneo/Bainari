@@ -110,74 +110,92 @@ void run_instruction(int instPtr)
     if (verbose)
         printf("OPCODE: %d\n", opcode);
 
-    // (0) Set all pointers to 0
+    // (0) Set arg pointer to 0
     if (opcode == 0)
     {
-        ptr0 = 0;
-        ptr1 = 0;
-        ptr2 = 0;
+        if (instPtr)
+            ptr0 = 0;
+        else
+            ptr1 = 0;
     }
 
-    // (1) Set ptr2 to arg
-    else if (opcode == 1)
-        ptr2 = arg;
+    // (1) Do nothing (this is required for most programs, trust me)
 
-    // (2) Set the argument pointer to ptr2
+    // (2) Push arg to the stack
     else if (opcode == 2)
+        push(stack, arg);
+
+    // (3) Set the arg pointer to the next stack item
+    else if (opcode == 3)
     {
         if (instPtr)
-            ptr0 = ptr2;
+            ptr0 = pop(stack);
         else
-            ptr1 = ptr2;
+            ptr1 = pop(stack);
     }
 
-    // (3) Go back arg letters
-    else if (opcode == 3)
+    // (4) Go back arg letters
+    else if (opcode == 4)
         fileIndex -= arg;
 
-    // (4) Go back arg letters if ptr2 is not zero
-    else if (opcode == 4)
-    {
-        if (ptr2)
-            fileIndex -= arg;
-    }
-
-    // (5) Kill the program with arg as the exit code
+    // (5) Go back arg letters if the next stack item is not zero
     else if (opcode == 5)
+        fileIndex -= arg * !!pop(stack);
+
+    // (6) Kill the program with arg as the exit code
+    else if (opcode == 6)
         quit(arg);
 
-    // (6) Print the integer value of arg
-    else if (opcode == 6)
+    // (7) Print the integer value of arg
+    else if (opcode == 7)
         printf("%d", arg);
 
-    // (7) Print arg as a character
-    else if (opcode == 7)
+    // (8) Print arg as a character
+    else if (opcode == 8)
         printf("%c", arg);
 
-    // (8) Add arg to ptr2 (ptr2 += arg)
-    else if (opcode == 8)
+    // (9) Add arg to ptr2 (ptr2 += arg)
+    else if (opcode == 9)
         ptr2 += arg;
 
-    // (9) Subtract arg from ptr2 (ptr2 -= arg)
-    else if (opcode == 9)
-        ptr2 -= arg;
-
-    // (10) Multiply arg with ptr2 (ptr2 *= arg)
+    // (10) Subtract the next stack item from arg (arg -= pop(stack))
     else if (opcode == 10)
-        ptr2 *= arg;
+    {
+        if (instPtr)
+            ptr0 -= pop(stack);
+        else
+            ptr1 -= pop(stack);
+    }
 
-    // (11) Divide ptr2 into arg (ptr2 /= arg)
+    // (11) Multiply the next stack item with arg (arg *= pop(stack))
     else if (opcode == 11)
-        ptr2 /= arg;
+    {
+        if (instPtr)
+            ptr0 *= pop(stack);
+        else
+            ptr1 *= pop(stack);
+    }
 
-    // (12) Flip sign of arg pointer
+    // (12) Divide arg into the next stack item (arg /= pop(stack))
     else if (opcode == 12)
     {
         if (instPtr)
-            ptr0 = -ptr0;
+            ptr0 /= pop(stack);
         else
-            ptr1 = -ptr1;
+            ptr1 /= pop(stack);
     }
+
+    // (13) Swap ptr2 and arg
+    // else if (opcode == 14)
+    // {
+    //     int temp = ptr2;
+    //     ptr2 = arg;
+
+    //     if (instPtr)
+    //         ptr0 = temp;
+    //     else
+    //         ptr1 = temp;
+    // }
 }
 
 int main(int argc, char ** argv)
@@ -257,16 +275,23 @@ int main(int argc, char ** argv)
         char ch = buffer[fileIndex];
 
         if (verbose && (ch == '0' || ch == '1'))
-            printf("[%c] ptr0: %d, ptr1: %d, ptr2: %d\n", ch, ptr0, ptr1, ptr2);
+        {
+            printf("[%c] ptr0: %d, ptr1: %d, [", ch, ptr0, ptr1);
+
+            for (int a = 0; a < stack->top + 1; a++)
+                printf("%d,", stack->items[a]);
+
+            if (stack->top + 1)
+                printf("\b");
+
+            printf("]\n");
+        }
 
         if (ch == '0')
         {
             // 000 was found
             if (!(secondLastInst || lastInst))
             {
-                if (verbose)
-                    printf("Running compound operation 0...\n");
-
                 // Take away 2 from ptr0 to counter what happens due to 000
                 // executing as two ptr0 additions
                 ptr0 -= 2;
@@ -292,9 +317,6 @@ int main(int argc, char ** argv)
             // 111 was found
             if (secondLastInst == 1 && lastInst == 1)
             {
-                if (verbose)
-                    printf("Running compound operation 1...\n");
-
                 // Take away 2 from ptr1 to counter what happens due to 111
                 // executing as two ptr1 additions
                 ptr1 -= 2;
@@ -304,8 +326,8 @@ int main(int argc, char ** argv)
                 // Reset ptr1 to 0
                 ptr1 = 0;
 
-                lastInst = -1;
                 secondLastInst = lastInst;
+                lastInst = -1;
                 continue;
             }
 

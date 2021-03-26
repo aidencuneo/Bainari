@@ -2,10 +2,34 @@ This program prints seventeen. (In decimal form, except I can't write one in a
 bainari program without messing up the code)
 
 Print number
-11011000 11011000 11011000 101000 001001001000
+11011 000
+11011 000
+11011 000
+101 000
+00100100101 000
+
+(Clear pointers) 000
 
 Print newline
-000 11001100110011011000
+11001100110011011 000
 
-Set first pointer to seventeen and decrement by one until zero is reached
-11011000 11011000 11011000 101000 001001001
+(Clear pointers) 000
+
+Set second pointer to seventeen
+11011 000
+11011 000
+11011 000
+101 000
+1101 000
+
+(Clear pointers) 000
+
+Push one into stack
+001 000
+
+Swap first and second pointer
+00100100100100100101 000
+
+Decrement by one until zero is reached
+
+(Exit) 000 00100101 000
