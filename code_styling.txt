@@ -1,0 +1,11 @@
+Stack items are used as function arguments in the order that they are taken
+from the top of the stack
+
+Uppercase variables A, B, C, etc. are function return values
+
+The first item in the stack can be used to tell a particular function how many
+arguments it will be receiving from the stack, if that function can receive an
+undefined amount
+
+Functions are stylised based on Quokka functions for readability, for example:
+fun name argmin argmax : retcount
