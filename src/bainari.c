@@ -153,6 +153,31 @@ void run_instruction(int instPtr)
     // (7) Print arg as a character
     else if (opcode == 7)
         printf("%c", arg);
+
+    // (8) Add arg to ptr2 (ptr2 += arg)
+    else if (opcode == 8)
+        ptr2 += arg;
+
+    // (9) Subtract arg from ptr2 (ptr2 -= arg)
+    else if (opcode == 9)
+        ptr2 -= arg;
+
+    // (10) Multiply arg with ptr2 (ptr2 *= arg)
+    else if (opcode == 10)
+        ptr2 *= arg;
+
+    // (11) Divide ptr2 into arg (ptr2 /= arg)
+    else if (opcode == 11)
+        ptr2 /= arg;
+
+    // (12) Flip sign of arg pointer
+    else if (opcode == 12)
+    {
+        if (instPtr)
+            ptr0 = -ptr0;
+        else
+            ptr1 = -ptr1;
+    }
 }
 
 int main(int argc, char ** argv)
