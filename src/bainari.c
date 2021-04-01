@@ -23,6 +23,10 @@ int ptr0 = 0;
 int ptr1 = 0;
 int ptr2 = 0;
 
+// Arg pointer sign (default: +)
+// (Used to enable subtraction from ptr1)
+int argSign = 1;
+
 // CLI Options
 int minify = 0;
 int verbose = 0;
@@ -65,9 +69,21 @@ char * minify_code(char * code)
     min[0] = 0;
     int ind = 0;
 
+    int comment = 0;
+
     for (int i = 0; i < len; i++)
+    {
+        if (code[i] == '#')
+            comment = 1;
+        else if (code[i] == '\n')
+            comment = 0;
+
+        if (comment)
+            continue;
+
         if (code[i] == '0' || code[i] == '1')
             min[ind++] = code[i];
+    }
 
     min[ind] = 0;
     return min;
@@ -119,13 +135,13 @@ void run_instruction(int instPtr)
             ptr1 = 0;
     }
 
-    // (1) Do nothing (this is required for most programs, trust me)
+    // (1) Do nothing (not required anymore)
 
     // (2) Push arg to the stack
     else if (opcode == 2)
         push(stack, arg);
 
-    // (3) Set the arg pointer to the next stack item
+    // (3) Set the arg pointer to the next stack item (after popping)
     else if (opcode == 3)
     {
         if (instPtr)
@@ -134,55 +150,59 @@ void run_instruction(int instPtr)
             ptr1 = pop(stack);
     }
 
-    // (4) Go back arg letters
+    // (4) Go back arg letters if the next stack item is not zero
     else if (opcode == 4)
-        fileIndex -= arg;
+        fileIndex -= arg * !!peek(stack);
 
-    // (5) Go back arg letters if the next stack item is not zero
+    // (5) Go forward arg letters if the next stack item is not zero
     else if (opcode == 5)
-        fileIndex -= arg * !!pop(stack);
+        fileIndex += arg * !!peek(stack);
 
     // (6) Kill the program with arg as the exit code
-    else if (opcode == 6)
-        quit(arg);
+    // else if (opcode == 6)
+    //     quit(arg);
 
-    // (7) Print the integer value of arg
-    else if (opcode == 7)
+    // (6) Print the integer value of arg
+    else if (opcode == 6)
         printf("%d", arg);
 
-    // (8) Print arg as a character
-    else if (opcode == 8)
+    // (7) Print arg as a character
+    else if (opcode == 7)
         printf("%c", arg);
+
+    // (8) Flip arg sign (+ to - and vice versa)
+    else if (opcode == 8)
+        argSign = -argSign;
 
     // (9) Add arg to ptr2 (ptr2 += arg)
     else if (opcode == 9)
         ptr2 += arg;
 
-    // (10) Subtract the next stack item from arg (arg -= pop(stack))
+    // (10) Subtract the next stack item from arg (arg -= peek(stack))
     else if (opcode == 10)
     {
         if (instPtr)
-            ptr0 -= pop(stack);
+            ptr0 -= peek(stack);
         else
-            ptr1 -= pop(stack);
+            ptr1 -= peek(stack);
     }
 
-    // (11) Multiply the next stack item with arg (arg *= pop(stack))
+    // (11) Multiply the next stack item with arg (arg *= peek(stack))
     else if (opcode == 11)
     {
         if (instPtr)
-            ptr0 *= pop(stack);
+            ptr0 *= peek(stack);
         else
-            ptr1 *= pop(stack);
+            ptr1 *= peek(stack);
     }
 
-    // (12) Divide arg into the next stack item (arg /= pop(stack))
+    // (12) Divide arg into the next stack item (arg /= peek(stack))
     else if (opcode == 12)
     {
         if (instPtr)
-            ptr0 /= pop(stack);
+            ptr0 /= peek(stack);
         else
-            ptr1 /= pop(stack);
+            ptr1 /= peek(stack);
     }
 
     // (13) Swap ptr2 and arg
@@ -247,27 +267,26 @@ int main(int argc, char ** argv)
     if (!buffer)
         return 0;
 
+    // Minify the whole program before running it
+    char * minified = minify_code(buffer);
+    free(buffer);
+
+    // Buffer now contains minified code
+    buffer = minified;
+    length = strlen(buffer);
+
     if (minify)
     {
-        char * minified = minify_code(buffer);
-
-        printf("%s\n", minified);
-
-        free(minified);
+        printf("%s\n", buffer);
         free(buffer);
-
         return 0;
     }
 
     free(args);
 
     // Interpreter vars
-    stack = newStack(512); // Block size is 256
+    stack = newStack(512); // Block size is 512
     // (Pointers are also global but are not defined here)
-
-    // Previous instructions (0 or 1)
-    int secondLastInst = -1;
-    int lastInst = -1;
 
     // (fileIndex is global)
     for (fileIndex = 0; fileIndex < length; fileIndex++)
@@ -289,52 +308,57 @@ int main(int argc, char ** argv)
 
         if (ch == '0')
         {
-            // 000 was found
-            if (!(secondLastInst || lastInst))
+            // Temporary variable for shorter code
+            int i = fileIndex;
+
+            // If 0000 was found
+            if (i > 2 && buffer[i] + buffer[i - 1] + buffer[i - 2] + buffer[i - 3] == '0' * 4)
             {
-                // Take away 2 from ptr0 to counter what happens due to 000
-                // executing as two ptr0 additions
-                ptr0 -= 2;
+                // Cancel if the character before this 0000 group is also a 0
+                if (i > 3 && buffer[i - 4] == '0')
+                {
+                    ++ptr0;
+                    continue;
+                }
+
+                // Take away 3 from ptr0 to cancel what happens due to 0000
+                // executing as three ptr0 additions
+                ptr0 -= 3;
 
                 run_instruction(0);
 
                 // Reset ptr0 to 0
                 ptr0 = 0;
 
-                secondLastInst = lastInst;
-                lastInst = -1;
                 continue;
             }
 
             // Otherwise, handle instruction normally and set lastInst to 0
             ++ptr0;
-            secondLastInst = lastInst;
-            lastInst = 0;
         }
 
         else if (ch == '1')
         {
             // 111 was found
-            if (secondLastInst == 1 && lastInst == 1)
-            {
-                // Take away 2 from ptr1 to counter what happens due to 111
-                // executing as two ptr1 additions
-                ptr1 -= 2;
+            // if (secondLastInst == 1 && lastInst == 1)
+            // {
+            //     // Take away 2 from ptr1 to counter what happens due to 111
+            //     // executing as two ptr1 additions
+            //     ptr1 -= 2;
 
-                run_instruction(1);
+            //     run_instruction(1);
 
-                // Reset ptr1 to 0
-                ptr1 = 0;
+            //     // Reset ptr1 to 0
+            //     ptr1 = 0;
 
-                secondLastInst = lastInst;
-                lastInst = -1;
-                continue;
-            }
+            //     secondLastInst = lastInst;
+            //     lastInst = -1;
+            //     continue;
+            // }
 
-            // Otherwise, handle instruction normally and set lastInst to 1
-            ++ptr1;
-            secondLastInst = lastInst;
-            lastInst = 1;
+            // Handle instruction normally and set lastInst to 1
+            // Since ptr1 is the arg pointer, add the arg sign to ptr1
+            ptr1 += argSign;
         }
     }
 
