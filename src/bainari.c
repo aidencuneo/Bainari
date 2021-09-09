@@ -103,22 +103,12 @@ void quit(int code)
     exit(code);
 }
 
-void run_instruction(int instPtr)
+void run_instruction()
 {
     // instPtr tells this function which pointer should be used as the opcode
 
-    int opcode, arg;
-
-    if (instPtr)
-    {
-        opcode = ptr1;
-        arg = ptr0;
-    }
-    else
-    {
-        opcode = ptr0;
-        arg = ptr1;
-    }
+    int opcode = ptr0;
+    int arg = ptr1;
 
     // opcode is now the operation code to perform, and arg is the argument
     // that will be used with the operation
@@ -128,12 +118,7 @@ void run_instruction(int instPtr)
 
     // (0) Set arg pointer to 0
     if (opcode == 0)
-    {
-        if (instPtr)
-            ptr0 = 0;
-        else
-            ptr1 = 0;
-    }
+        ptr1 = 0;
 
     // (1) Do nothing (not required anymore)
 
@@ -143,36 +128,31 @@ void run_instruction(int instPtr)
 
     // (3) Set the arg pointer to the next stack item (after popping)
     else if (opcode == 3)
-    {
-        if (instPtr)
-            ptr0 = pop(stack);
-        else
-            ptr1 = pop(stack);
-    }
+        ptr1 = pop(stack);
 
-    // (4) Go back arg letters if the next stack item is not zero
+    // (4) Set the arg pointer to the first stack item (after popping)
     else if (opcode == 4)
+        ptr1 = popBottom(stack);
+
+    // (5) Go back arg letters if the next stack item is not zero
+    else if (opcode == 5)
         fileIndex -= arg * !!peek(stack);
 
-    // (5) Go forward arg letters if the next stack item is not zero
-    else if (opcode == 5)
+    // (6) Go forward arg letters if the next stack item is not zero
+    else if (opcode == 6)
         fileIndex += arg * !!peek(stack);
 
     // (6) Kill the program with arg as the exit code
     // else if (opcode == 6)
     //     quit(arg);
 
-    // (6) Print the integer value of arg
-    else if (opcode == 6)
+    // (7) Print the integer value of arg
+    else if (opcode == 7)
         printf("%d", arg);
 
-    // (7) Print arg as a character
-    else if (opcode == 7)
-        printf("%c", arg);
-
-    // (8) Flip arg sign (+ to - and vice versa)
+    // (8) Print arg as a character
     else if (opcode == 8)
-        argSign = -argSign;
+        printf("%c", arg);
 
     // (9) Add arg to ptr2 (ptr2 += arg)
     else if (opcode == 9)
@@ -180,30 +160,19 @@ void run_instruction(int instPtr)
 
     // (10) Subtract the next stack item from arg (arg -= peek(stack))
     else if (opcode == 10)
-    {
-        if (instPtr)
-            ptr0 -= peek(stack);
-        else
-            ptr1 -= peek(stack);
-    }
+        ptr1 -= peek(stack);
 
     // (11) Multiply the next stack item with arg (arg *= peek(stack))
     else if (opcode == 11)
-    {
-        if (instPtr)
-            ptr0 *= peek(stack);
-        else
-            ptr1 *= peek(stack);
-    }
+        ptr1 *= peek(stack);
 
     // (12) Divide arg into the next stack item (arg /= peek(stack))
     else if (opcode == 12)
-    {
-        if (instPtr)
-            ptr0 /= peek(stack);
-        else
-            ptr1 /= peek(stack);
-    }
+        ptr1 /= peek(stack);
+
+    // (13) Flip arg sign (+ to - and vice versa)
+    else if (opcode == 13)
+        argSign = -argSign;
 
     // (13) Swap ptr2 and arg
     // else if (opcode == 14)
@@ -325,7 +294,7 @@ int main(int argc, char ** argv)
                 // executing as three ptr0 additions
                 ptr0 -= 3;
 
-                run_instruction(0);
+                run_instruction();
 
                 // Reset ptr0 to 0
                 ptr0 = 0;
